@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Timbre">
+<title>Timbre — Work Hours</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --surface: #181818;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --text: #f0ece4;
+    --muted: #6a6a6a;
+    --accent: #e8c547;
+    --pos: #5cd98a;
+    --neg: #e85c5c;
+    --warn: #e89f5c;
+    --radius: 12px;
+    --daily: 500; /* 8h20m in minutes */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .month-nav button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .month-nav button:hover { border-color: var(--accent); color: var(--accent); }
+  #monthLabel {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  /* MONTHLY BALANCE CARD */
+  .balance-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .balance-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.6;
+  }
+  .balance-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .balance-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    transition: color 0.3s;
+  }
+  .balance-value.pos { color: var(--pos); }
+  .balance-value.neg { color: var(--neg); }
+  .balance-value.zero { color: var(--text); }
+  .balance-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .balance-sub strong { color: var(--text); }
+
+  /* TODAY SECTION */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .today-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .today-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .time-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .time-block label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .time-block input[type="time"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    padding: 10px 12px;
+    width: 100%;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .time-block input[type="time"]:focus,
+  .time-block input[type="time"]:hover {
+    border-color: var(--accent);
+  }
+  /* Style the time input on Webkit */
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+    cursor: pointer;
+  }
+
+  .today-note {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 14px;
+    min-height: 16px;
+    transition: color 0.2s;
+  }
+  .today-note.valid { color: var(--pos); font-style: normal; }
+  .today-note.warn { color: var(--warn); font-style: normal; }
+  .today-note.err { color: var(--neg); font-style: normal; }
+
+  .save-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #0e0e0e;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .save-btn:hover { background: #f0d055; transform: translateY(-1px); }
+  .save-btn:active { transform: translateY(0); }
+  .save-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+
+  /* DATE PICKER */
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  #entryDate {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    flex: 1;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  #entryDate:focus, #entryDate:hover { border-color: var(--accent); }
+  #entryDate::-webkit-calendar-picker-indicator { filter: invert(0.5); }
+  .today-shortcut {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .today-shortcut:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* LOG LIST */
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .log-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.15s;
+  }
+  .log-entry:hover { border-color: var(--border); }
+  .log-entry.today-entry { border-color: var(--accent); border-opacity: 0.5; }
+
+  .log-date {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--text);
+    min-width: 36px;
+    text-align: center;
+  }
+  .log-weekday {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  .log-day-col { display: flex; flex-direction: column; align-items: center; }
+
+  .log-times {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .log-times-main {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .log-times-main span { color: var(--muted); }
+  .log-duration {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .log-delta {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: right;
+    min-width: 56px;
+  }
+  .log-delta.pos { color: var(--pos); }
+  .log-delta.neg { color: var(--neg); }
+
+  .log-delete {
+    background: none;
+    border: none;
+    color: var(--border);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+  .log-delete:hover { color: var(--neg); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .empty-state div { font-size: 32px; margin-bottom: 8px; }
+
+  /* CUMULATIVE LINE */
+  .log-running {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 2px;
+  }
+  .log-running.pos { color: var(--pos); opacity: 0.6; }
+  .log-running.neg { color: var(--neg); opacity: 0.7; }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.ok { border-color: var(--pos); }
+  .toast.err-t { border-color: var(--neg); }
+
+  @media (prefers-color-scheme: light) {
+    /* keep dark, it's intentional */
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">TIM<span>BR</span>E</div>
+    <div class="month-nav">
+      <button id="prevMonth">&#8592;</button>
+      <div id="monthLabel"></div>
+      <button id="nextMonth">&#8594;</button>
+    </div>
+  </header>
+
+  <!-- BALANCE CARD -->
+  <div class="balance-card">
+    <div class="balance-label">Monthly balance</div>
+    <div class="balance-value zero" id="balanceVal">+0:00</div>
+    <div class="balance-sub" id="balanceSub">0 work days logged</div>
+  </div>
+
+  <!-- ENTRY FORM -->
+  <div class="section-label">Log hours</div>
+  <div class="today-card">
+    <div class="date-row">
+      <input type="date" id="entryDate">
+      <button class="today-shortcut" id="todayBtn">Today</button>
+    </div>
+    <div class="today-row">
+      <div class="time-block">
+        <label>Start</label>
+        <input type="time" id="startTime" value="09:00">
+      </div>
+      <div class="time-block">
+        <label>End</label>
+        <input type="time" id="endTime" value="17:20">
+      </div>
+    </div>
+    <div class="today-note" id="entryNote">Enter start and end time</div>
+    <button class="save-btn" id="saveBtn">Save Entry</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- LOG -->
+  <div class="section-label" id="logLabel">This month</div>
+  <div class="log-list" id="logList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DAILY = 500; // 8h20m in minutes
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// State
+let currentYear, currentMonth; // 0-indexed month
+let entries = {}; // key: "YYYY-MM-DD", value: {start, end}
+
+// Init
+function init() {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  loadData();
+  setDate(formatDate(now));
+  setupListeners();
+  render();
+}
+
+function formatDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function today() { return formatDate(new Date()); }
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem('timbre_entries');
+    if (raw) entries = JSON.parse(raw);
+  } catch(e) { entries = {}; }
+}
+
+function saveData() {
+  localStorage.setItem('timbre_entries', JSON.stringify(entries));
+}
+
+function setDate(val) {
+  document.getElementById('entryDate').value = val;
+  // Pre-fill if entry exists
+  if (entries[val]) {
+    document.getElementById('startTime').value = entries[val].start;
+    document.getElementById('endTime').value = entries[val].end;
+  }
+  updateNote();
+}
+
+function setupListeners() {
+  document.getElementById('todayBtn').addEventListener('click', () => {
+    setDate(today());
+  });
+  document.getElementById('entryDate').addEventListener('change', (e) => {
+    if (entries[e.target.value]) {
+      document.getElementById('startTime').value = entries[e.target.value].start;
+      document.getElementById('endTime').value = entries[e.target.value].end;
+    }
+    updateNote();
+  });
+  document.getElementById('startTime').addEventListener('input', updateNote);
+  document.getElementById('endTime').addEventListener('input', updateNote);
+  document.getElementById('saveBtn').addEventListener('click', saveEntry);
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    render();
+  });
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    render();
+  });
+}
+
+function parseTime(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function fmtMinutes(mins) {
+  const sign = mins < 0 ? '−' : '+';
+  const abs = Math.abs(mins);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return `${sign}${h}:${String(m).padStart(2,'0')}`;
+}
+
+function fmtDuration(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+
+function updateNote() {
+  const start = document.getElementById('startTime').value;
+  const end = document.getElementById('endTime').value;
+  const note = document.getElementById('entryNote');
+  if (!start || !end) { note.textContent = 'Enter start and end time'; note.className = 'today-note'; return; }
+  const s = parseTime(start), e = parseTime(end);
+  if (e <= s) { note.textContent = 'End must be after start'; note.className = 'today-note err'; return; }
+  const startH = parseTime(start);
+  if (startH < 8*60 || startH > 10*60) {
+    note.textContent = '⚠ Start time is outside 08:00–10:00 window'; note.className = 'today-note warn'; return;
+  }
+  const worked = e - s;
+  const delta = worked - DAILY;
+  note.textContent = `Worked ${fmtDuration(worked)} → ${fmtMinutes(delta)} today`;
+  note.className = 'today-note ' + (delta >= 0 ? 'valid' : 'err');
+}
+
+function saveEntry() {
+  const date = document.getElementById('entryDate').value;
+  const start = document.getElementById('startTime').value;
+  const end = document.getElementById('endTime').value;
+  if (!date || !start || !end) { showToast('Please fill all fields', 'err-t'); return; }
+  const s = parseTime(start), e = parseTime(end);
+  if (e <= s) { showToast('End must be after start', 'err-t'); return; }
+  entries[date] = { start, end };
+  saveData();
+  // Navigate to month of entry
+  const [y, mo] = date.split('-').map(Number);
+  currentYear = y; currentMonth = mo - 1;
+  render();
+  showToast(entries[date] ? 'Entry saved ✓' : 'Entry updated ✓', 'ok');
+}
+
+function deleteEntry(date) {
+  delete entries[date];
+  saveData();
+  render();
+  showToast('Entry removed', '');
+}
+
+function render() {
+  renderHeader();
+  renderBalance();
+  renderLog();
+}
+
+function renderHeader() {
+  document.getElementById('monthLabel').textContent = MONTHS[currentMonth].slice(0,3).toUpperCase() + ' ' + currentYear;
+}
+
+function getMonthEntries() {
+  const prefix = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+  return Object.entries(entries)
+    .filter(([k]) => k.startsWith(prefix))
+    .sort(([a],[b]) => a.localeCompare(b));
+}
+
+function renderBalance() {
+  const monthEntries = getMonthEntries();
+  let total = 0;
+  monthEntries.forEach(([, v]) => {
+    total += (parseTime(v.end) - parseTime(v.start)) - DAILY;
+  });
+  const el = document.getElementById('balanceVal');
+  el.textContent = fmtMinutes(total);
+  el.className = 'balance-value ' + (total > 0 ? 'pos' : total < 0 ? 'neg' : 'zero');
+  const sub = document.getElementById('balanceSub');
+  const days = monthEntries.length;
+  sub.innerHTML = `<strong>${days}</strong> work day${days!==1?'s':''} logged &middot; ${fmtDuration(Math.abs(total))} ${total >= 0 ? 'ahead' : 'behind'}`;
+}
+
+function renderLog() {
+  const list = document.getElementById('logList');
+  const monthEntries = getMonthEntries();
+  document.getElementById('logLabel').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+
+  if (monthEntries.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div>🕐</div>No entries yet for this month</div>`;
+    return;
+  }
+
+  let running = 0;
+  // First compute running totals
+  const withRunning = monthEntries.map(([date, v]) => {
+    const worked = parseTime(v.end) - parseTime(v.start);
+    const delta = worked - DAILY;
+    running += delta;
+    return { date, v, worked, delta, running };
+  });
+
+  // Sort descending for display
+  withRunning.reverse();
+
+  list.innerHTML = '';
+  const todayStr = today();
+
+  withRunning.forEach(({ date, v, worked, delta, running }) => {
+    const d = new Date(date + 'T00:00:00');
+    const dayNum = d.getDate();
+    const dayName = DAYS[d.getDay()];
+    const isToday = date === todayStr;
+
+    const el = document.createElement('div');
+    el.className = 'log-entry' + (isToday ? ' today-entry' : '');
+
+    const runClass = running >= 0 ? 'pos' : 'neg';
+    const dClass = delta >= 0 ? 'pos' : 'neg';
+
+    el.innerHTML = `
+      <div class="log-day-col">
+        <div class="log-date">${String(dayNum).padStart(2,'0')}</div>
+        <div class="log-weekday">${dayName}</div>
+      </div>
+      <div class="log-times">
+        <div class="log-times-main">${v.start} <span>→</span> ${v.end}</div>
+        <div class="log-duration">${fmtDuration(worked)}</div>
+        <div class="log-running ${runClass}">running ${fmtMinutes(running)}</div>
+      </div>
+      <div>
+        <div class="log-delta ${dClass}">${fmtMinutes(delta)}</div>
+      </div>
+      <button class="log-delete" title="Delete" data-date="${date}">✕</button>
+    `;
+    list.appendChild(el);
+  });
+
+  list.querySelectorAll('.log-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const date = e.currentTarget.dataset.date;
+      if (confirm(`Delete entry for ${date}?`)) deleteEntry(date);
+    });
+  });
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+init();
+</script>
+</body>
+</html>
